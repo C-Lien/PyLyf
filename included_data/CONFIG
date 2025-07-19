@@ -1,0 +1,7 @@
+WALLPAPER_DIRECTORY="C:\ProgramData\PyLyf\Wallpapers"
+GENERATED_WALLPAPER_PATH="C:\ProgramData\PyLyf\Generated"
+DATES_PATH="C:\ProgramData\PyLyf\dates.csv"
+FONT_PATH="C:\Users\%user%\AppData\Local\Microsoft\Windows\Fonts\LiteOn-FREE.otf" # OPTIONAL - DEFAULT: Helvetica
+BIRTH_DATE=01/01/1980
+TOTAL_YEARS=50
+TICK_FREQUENCY=5
