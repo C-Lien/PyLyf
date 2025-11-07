@@ -1,6 +1,6 @@
 """
 Author : CHRISTOPHER LIEN
-Date   : 2025-07-19
+Date   : 2025-08-04
 """
 
 ################################################################################
@@ -16,18 +16,21 @@ from PIL import Image
 
 # ────────────────── EXTERNAL IMPORTS
 import pyautogui
+from textwrap import dedent
+
 from playwright.sync_api import sync_playwright
+from playwright._impl._errors import TargetClosedError
+import time, logging
 
 # ────────────────── CONSTANTS
 HOME = Path(r"C:\ProgramData\PyLyf")
 CONFIG_PATH = HOME / "CONFIG"
+STYLE_PATH = HOME / "STYLE.css"
 WEEKS_PER_YEAR = 52
 SPI_SETWALLPAPER = 20  # SystemParametersInfo flag
 
+
 # ────────────────── DIRECTORY
-HOME = Path(r"C:\ProgramData\PyLyf")
-
-
 def create_directory():
     if HOME.exists():
         return
@@ -71,20 +74,22 @@ TOTAL_YEARS = int(cfg["TOTAL_YEARS"])
 TICK_FREQUENCY = int(cfg["TICK_FREQUENCY"])
 SCREEN_W, SCREEN_H = map(int, pyautogui.size())
 
+# ────────────────── CSS
+STYLE = STYLE_PATH.read_text(encoding="utf-8")
+
 ################################################################################
 ## Choose & Prepare Wallpaper
 ################################################################################
 
 
 def pick_random_jpg(root: Path) -> Path:
-    p = root
     while True:
-        subs = [x for x in p.iterdir() if x.is_dir()]
-        jpgs = [x for x in p.iterdir() if x.suffix.lower() == ".jpg"]
+        subs = [x for x in root.iterdir() if x.is_dir()]
+        jpgs = [x for x in root.iterdir() if x.suffix.lower() == ".jpg"]
         if jpgs:
             return random.choice(jpgs)
         if subs:
-            p = random.choice(subs)
+            root = random.choice(subs)
         else:
             raise FileNotFoundError("No .jpg files below", root)
 
@@ -148,116 +153,41 @@ def build_ticks_html() -> tuple[str, float]:
 
 
 def build_html(bg_png: Path) -> str:
-    with bg_png.open("rb") as f:
-        wall_uri = "data:image/png;base64," + base64.b64encode(f.read()).decode()
+    wall_uri = "data:image/png;base64," + base64.b64encode(bg_png.read_bytes()).decode(
+        "ascii"
+    )
 
     ticks_html, lived_pct = build_ticks_html()
     font_css = make_font_face()
+    bar_height = min(SCREEN_H / 52, 10)
 
-    return f"""
+    return dedent(
+        f"""\
         <!DOCTYPE html>
         <html>
-            <head><meta charset="utf-8">
-                <style>
-                    {font_css}
-                    *{{
-                        box-sizing:border-box;
-                        margin:0;
-                        padding:0;
-                    }}
-                    html,body{{
-                        min-width:100%;
-                        min-height:100%;
-                        overflow:hidden;
-                        }}
-                    body{{
-                        background:url('{wall_uri}') center/cover no-repeat fixed;
-                        font:12px {'custom' if font_css else FONT_DEFAULT};
-                    }}
-                    .bar-wrap{{
-                        position:absolute;
-                        left:5%;
-                        width:90%;
-                        height:{min(SCREEN_H/52,10):.2f}px;
-                        bottom:8%;
-                        background:rgba(0,0,0,.45);
-                        backdrop-filter:blur(6px) brightness(.6);
-                        border:1px solid rgba(0,0,0,.85);
-                        border-radius:4px;
-                    }}
-                    .lived{{
-                        position:absolute;
-                        inset:0 auto 0 0;
-                        width:{lived_pct:.4f}%;
-                        background:rgba(48,48,48,.8);
-                        }}
-                    .tick{{
-                        position:absolute;
-                        left:var(--x);
-                        transform:translateX(-50%);
-                        width:1px;
-                    }}
-                    .tick.year{{
-                        bottom:0;
-                        height:8px;
-                        background:#000;
-                    }}
-                    .tick.year::after{{
-                        content:attr(data-label);
-                        position:absolute;
-                        top:calc(100% + 10px);
-                        left:50%;
-                        transform:translateX(-50%);
-                        font-size:13px;
-                        color:#fff;
-                        font-weight:600;
-                        -webkit-text-stroke:2px #000;
-                        paint-order:stroke fill;
-                        white-space:nowrap;
-                    }}
-                    .tick.ev{{
-                        position:absolute;
-                        left:var(--x);
-                        transform:translateX(-50%);
-                        width:1px;
-                        bottom:100%;
-                        height:calc(var(--scale,1)*8px);
-                    }}
-                    .tick.ev::before{{
-                        content:"";
-                        position:absolute;
-                        bottom:1px;
-                        height:calc(100% + 10px);
-                        width:1px;
-                        background:#fff;
-                        filter:
-                            drop-shadow( 1px 0 0 rgba(0,0,0,.85))
-                            drop-shadow(-1px 0 0 rgba(0,0,0,.85))
-                            drop-shadow( 0 1px 0 rgba(0,0,0,.85))
-                            drop-shadow( 0 -1px 0 rgba(0,0,0,.85));
-                    }}
-                    .tick.ev::after{{
-                        content:attr(data-label);
-                        position:absolute;
-                        bottom:calc(100% + 2px);
-                        left:4px;
-                        font-size:11px;
-                        font-weight:600;
-                        color:#fff;
-                        -webkit-text-stroke:4px #000;
-                        paint-order:stroke fill;
-                        white-space:nowrap;
-                    }}
-                </style>
-            </head>
-            <body>
-                <div class="bar-wrap">
-                    <div class="lived"></div>
-                    {ticks_html}
-                </div>
-            </body>
+        <head>
+          <meta charset="utf-8">
+          <style>
+          {font_css}
+          {STYLE}
+
+          body{{
+              background:url('{wall_uri}') center/cover no-repeat fixed;
+              font:12px {'custom' if font_css else FONT_DEFAULT};
+          }}
+
+          .bar-wrap{{height:{bar_height:.2f}px}}
+          </style>
+        </head>
+        <body>
+          <div class="bar-wrap">
+            <div class="lived" style="width:{lived_pct:.4f}%"></div>
+            {ticks_html}
+          </div>
+        </body>
         </html>
-    """
+        """
+    )
 
 
 html_doc = build_html(wall_png)
@@ -283,7 +213,7 @@ with sync_playwright() as p:
 print(f"Wallpaper rendered: {generated_wallpaper}")
 
 ################################################################################
-## Setting Image as Background
+## Set Image as Background
 ################################################################################
 if ctypes.windll.user32.SystemParametersInfoW(
     SPI_SETWALLPAPER, 0, str(generated_wallpaper), 3

@@ -1,0 +1,91 @@
+
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+}
+
+html,body{
+    min-width:100%;
+    min-height:100%;
+    overflow:hidden;
+}
+
+/* === LIFE BAR =========================================================== */
+
+.bar-wrap{
+    position:absolute;
+    left:5%;
+    width:90%;
+    bottom:8%;
+    /* lighter shell */
+    background:#3c3c3c;
+    border:1px solid #3c3c3c;
+    border-radius:0;
+    box-shadow:0 0 12px 4px rgba(0,0,0,.45);
+}
+
+.lived{
+    position:absolute;
+    inset:0 auto 0 0;
+    backdrop-filter:blur(6px) brightness(1);
+    background:#6d6d6d;
+    border:1px solid #292929;
+    border-radius:0;
+    box-shadow:0 0 12px 4px rgba(0,0,0,.45);
+}
+
+/* === TICKS  ============================================================= */
+
+.tick.year::after,
+.tick.ev::after{
+    font-weight:600;
+    color:#fff;
+    -webkit-text-stroke:2px #000;
+    paint-order:stroke fill;
+    white-space:nowrap;
+}
+
+.tick{
+    position:absolute;
+    left:var(--x);
+    transform:translateX(-50%);
+    width:1px;
+}
+
+.tick.year{
+    bottom:0;
+    height:0;           /* hidden by default */
+    background:rgba(31,31,31,1);
+}
+
+.tick.year::after{
+    content:attr(data-label);
+    position:absolute;
+    top:calc(100% + 10px);
+    left:50%;
+    transform:translateX(-50%);
+    font-size:16px;
+}
+
+.tick.ev{
+    bottom:100%;
+    height:calc(var(--scale,1)*8px);
+}
+
+.tick.ev::before{
+    content:"";
+    position:absolute;
+    bottom:1px;
+    height:calc(100% + 8px);
+    width:1px;
+    background:#3c3c3c;
+}
+
+.tick.ev::after{
+    content:attr(data-label);
+    position:absolute;
+    bottom:calc(100% + 2px);
+    left:4px;
+    font-size:11px;
+}
